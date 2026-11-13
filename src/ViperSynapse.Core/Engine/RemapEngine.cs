@@ -36,6 +36,10 @@ public sealed class RemapEngine
     /// default for it, W for the stick's up, say. Null leaves it doing nothing.</summary>
     public Func<ushort, Binding?>? Defaults { get; set; }
 
+    /// <summary>Keys dropped entirely, never passed through: a mouse's relay keys (F13 and up), which the service
+    /// reads from the mouse's vendor interface instead, so no other program ever sees them.</summary>
+    public IReadOnlySet<ushort> Swallowed { get; set; } = new HashSet<ushort>();
+
     /// <summary>Any key press stops running macros (Synapse's "Macro and Keystroke Interruption: any key").</summary>
     public MacroInterruption Interruption { get; set; } = MacroInterruption.DedicatedKey;
 
@@ -59,6 +63,8 @@ public sealed class RemapEngine
     /// <summary>A key or button from the device: 1 down, 0 up, 2 auto-repeat.</summary>
     public void Key(ushort code, int value)
     {
+        if (Swallowed.Contains(code))
+            return;
         if (value == 2)
         {
             // Auto-repeat belongs to keys that pass through; a remapped key makes its own repeats.

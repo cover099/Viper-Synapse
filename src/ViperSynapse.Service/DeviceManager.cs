@@ -347,8 +347,12 @@ public sealed class DeviceManager : IDisposable
                 device.Session?.Dispose();
                 device.Session = null;
                 var model = device.Model;
+                // The relay keys (F13 and up, KEY_F13 = 183) arrive over hidraw; on their input node they are taken
+                // and dropped, or KDE and every program would see the mouse pressing F13-F17.
+                var relayCodes = model?.Keys.Where(k => k.RelayUsage != 0).Select(k => (ushort)(183 + k.RelayUsage - 0x68)).ToHashSet() ?? [];
                 device.Engine = new RemapEngine(_output, new Host(this, key))
                 {
+                    Swallowed = relayCodes,
                     Keymap = keymap,
                     Defaults = source => DefaultFor(model, source),
                     Interruption = profile.Interruption,
@@ -365,7 +369,7 @@ public sealed class DeviceManager : IDisposable
                     bool hypershiftAnywhere = keymap.Hypershift.Values.Any(b => b is not DefaultBinding);
                     device.Session = DeviceSession.Start(device.InputNodes, device.Engine, stick,
                         model?.Type == "mouse" && !hypershiftAnywhere && profile.Interruption != MacroInterruption.AnyKey
-                            ? (keys, hasWheel) => keys.Any(bound.Contains) || hasWheel && wheel
+                            ? (keys, hasWheel) => keys.Any(bound.Contains) || keys.Any(relayCodes.Contains) || hasWheel && wheel
                             : null);
                     var watched = device;
                     device.Session.StickMoved += (x, y) => SendStick(watched, x, y);

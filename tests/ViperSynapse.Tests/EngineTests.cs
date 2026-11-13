@@ -84,6 +84,20 @@ public class EngineTests
     }
 
     [Fact]
+    public void A_swallowed_relay_key_never_comes_out_but_other_keys_still_pass_through()
+    {
+        const ushort F15 = 185;   // a mouse's relay key: read from its vendor interface, never passed on
+        var (engine, rec, _) = Make(Keymap.Empty("k"));
+        engine.Swallowed = new HashSet<ushort> { F15 };
+        engine.Key(F15, 1);
+        engine.Key(F15, 2);
+        engine.Key(F15, 0);
+        engine.Key(A, 1);
+        engine.Key(A, 0);
+        Assert.Equal(["KEY_A:1", "KEY_A:0"], rec.Events);
+    }
+
+    [Fact]
     public void A_keyboard_function_holds_its_modifiers_around_the_key()
     {
         var (engine, rec, _) = Make(Keymap.Empty("k").With(A, new KeyboardBinding(C, Modifiers.Ctrl | Modifiers.Shift)));
