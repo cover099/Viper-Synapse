@@ -66,6 +66,19 @@ static class Program
         watcher.Created += (_, _) => Changed();
         watcher.Deleted += (_, _) => Changed();
 
+        // A device whose control interface didn't answer (a wireless mouse asleep, or its receiver still waking up
+        // at login) is tried again every few seconds until it does, so its settings and relayed buttons come up.
+        var retryControl = Task.Run(async () =>
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                try { await Task.Delay(TimeSpan.FromSeconds(5), stop.Token).ConfigureAwait(false); }
+                catch (OperationCanceledException) { break; }
+                if (devices.WaitingForDevice)
+                    devices.Refresh();
+            }
+        });
+
         try { await Task.Delay(Timeout.Infinite, stop.Token).ConfigureAwait(false); }
         catch (OperationCanceledException) { }
         return 0;

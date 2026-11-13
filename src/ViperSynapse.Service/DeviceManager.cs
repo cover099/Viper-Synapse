@@ -92,6 +92,19 @@ public sealed class DeviceManager : IDisposable
         public DateTime StickWatchedUntil { get; set; }
         public long StickLastSent { get; set; }
         public string? Problem { get; set; }
+        /// <summary>The control interface didn't answer (a wireless mouse asleep, or its receiver still waking up
+        /// at login): Refresh tries it again until it does.</summary>
+        public bool ControlSilent { get; set; }
+    }
+
+    /// <summary>A device's control interface hasn't answered yet: worth calling Refresh again in a few seconds.</summary>
+    public bool WaitingForDevice
+    {
+        get
+        {
+            lock (_gate)
+                return _devices.Values.Any(d => d.ControlSilent && d.Control == null);
+        }
     }
 
     public IReadOnlyList<DeviceInfo> Devices
@@ -168,8 +181,12 @@ public sealed class DeviceManager : IDisposable
         }
 
         var adopt = new List<(string Key, int Keymap)>();
+        // New devices, and ones whose control interface stayed silent last time (tried again).
+        List<Connected> probe;
+        lock (_gate)
+            probe = added.Concat(_devices.Values.Where(d => !added.Contains(d) && d.ControlSilent && d.Control == null)).ToList();
         // Probing talks to the hardware; keep it out of the lock.
-        foreach (var device in added)
+        foreach (var device in probe)
         {
             var control = hidraw.FirstOrDefault(n => n.PortPath == device.Port && RazerProbe.HasControlReport(n));
             device.ControlNode = control?.DevicePath;
@@ -190,11 +207,19 @@ public sealed class DeviceManager : IDisposable
                     {
                         transport.Dispose();
                         device.Problem = "The device did not answer on its control interface.";
+                        device.ControlSilent = true;
                     }
                     else
                     {
                         // Kept open while the device is plugged in: lighting and sensitivity go through it.
                         device.Control = new DeviceControl(transport, device.Identity.TransactionId, device.Model);
+                        if (device.ControlSilent)
+                        {
+                            device.ControlSilent = false;
+                            device.Problem = null;
+                            changed = true;
+                            Console.WriteLine($"{device.Name}: control interface answered on a retry.");
+                        }
                     }
                     // A keypad with keymaps of its own: the profile starts on the keymap the keypad is on.
                     if (device.Control?.ReadKeymap() is int keymap and >= 0)
