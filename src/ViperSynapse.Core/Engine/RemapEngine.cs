@@ -36,8 +36,9 @@ public sealed class RemapEngine
     /// default for it, W for the stick's up, say. Null leaves it doing nothing.</summary>
     public Func<ushort, Binding?>? Defaults { get; set; }
 
-    /// <summary>Keys dropped entirely, never passed through: a mouse's relay keys (F13 and up), which the service
-    /// reads from the mouse's vendor interface instead, so no other program ever sees them.</summary>
+    /// <summary>Keys dropped when they come from an input node, never passed through: a mouse's relay keys (F13 and
+    /// up). The service reads those from the mouse's vendor interface and hands them in with <see cref="RelayKey"/>,
+    /// so the binding still runs while no other program ever sees the F-key.</summary>
     public IReadOnlySet<ushort> Swallowed { get; set; } = new HashSet<ushort>();
 
     /// <summary>Any key press stops running macros (Synapse's "Macro and Keystroke Interruption: any key").</summary>
@@ -65,6 +66,14 @@ public sealed class RemapEngine
     {
         if (Swallowed.Contains(code))
             return;
+        KeyCore(code, value);
+    }
+
+    /// <summary>A relayed button's press, read from the vendor interface (not dropped like the same key from a node).</summary>
+    public void RelayKey(ushort code, int value) => KeyCore(code, value);
+
+    void KeyCore(ushort code, int value)
+    {
         if (value == 2)
         {
             // Auto-repeat belongs to keys that pass through; a remapped key makes its own repeats.

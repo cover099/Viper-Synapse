@@ -98,6 +98,19 @@ public class EngineTests
     }
 
     [Fact]
+    public void A_relayed_press_of_a_swallowed_key_still_runs_its_binding()
+    {
+        const ushort F15 = 185;
+        var (engine, rec, _) = Make(Keymap.Empty("k").With(F15, new KeyboardBinding(C)));
+        engine.Swallowed = new HashSet<ushort> { F15 };
+        engine.Key(F15, 1);          // from the input node: dropped
+        engine.Key(F15, 0);
+        engine.RelayKey(F15, 1);     // from the vendor interface: the binding runs
+        engine.RelayKey(F15, 0);
+        Assert.Equal(["KEY_C:1", "KEY_C:0"], rec.Events);
+    }
+
+    [Fact]
     public void A_keyboard_function_holds_its_modifiers_around_the_key()
     {
         var (engine, rec, _) = Make(Keymap.Empty("k").With(A, new KeyboardBinding(C, Modifiers.Ctrl | Modifiers.Shift)));

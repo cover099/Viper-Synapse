@@ -508,7 +508,7 @@ public sealed class DeviceManager : IDisposable
                 if (Environment.GetEnvironmentVariable("VIPER_DEBUG_RELAY") == "1")
                     Console.Error.WriteLine($"relay key 0x{usage:x2} {(down ? "down" : "up")} -> session {(device.Session != null ? "yes" : "no")}");
                 if (relayed.TryGetValue(usage, out var source))
-                    device.Session?.WithEngine(e => e.Key(source, down ? 1 : 0));
+                    device.Session?.WithEngine(e => e.RelayKey(source, down ? 1 : 0));
             };
             device.Relay = relay;
             Console.Error.WriteLine($"{device.Key}: relay keys read from {node.DevicePath}");
