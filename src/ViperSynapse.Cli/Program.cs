@@ -99,6 +99,16 @@ static class Program
             var answer = transport.Send(Commands.Request(tid, command));
             Console.WriteLine($"{command.Name,-16} {Describe(answer)}");
         }
+        // Newer devices: HyperPolling (00/C0) in place of 00/85, and brightness per LED (VarStore 01) in place of LED 0
+        var hyper = transport.Send(DeviceCommands.GetHyperPollingRate(tid));
+        if (hyper.Status == ReportStatus.Successful)
+            Console.WriteLine($"{"hyperpolling",-16} {Describe(hyper)}  = {DeviceCommands.ReadHyperPollingRate(hyper)} Hz");
+        foreach (byte led in new byte[] { 0x01, 0x04, 0x05, 0x0A })
+        {
+            var answer = transport.Send(Commands.Request(tid, Commands.GetBrightness, 0x01, led));
+            if (answer.Status == ReportStatus.Successful)
+                Console.WriteLine($"{$"brightness {led:x2}",-16} {Describe(answer)}");
+        }
         return 0;
     }
 
