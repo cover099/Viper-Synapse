@@ -9,7 +9,7 @@ namespace ViperSynapse.Tests;
 /// <summary>
 /// The whole input path through the kernel: a stand-in device made with uinput, a session that grabs it
 /// and remaps it, and the virtual output device, which the test grabs itself so that no key ever reaches
-/// the desktop. Skipped where /dev/uinput cannot be opened (CI, a machine without the udev rule).
+/// the desktop. Skipped where it cannot run (see <see cref="Uinput"/>).
 /// </summary>
 public class LoopbackTests
 {
@@ -25,12 +25,6 @@ public class LoopbackTests
         public ShortcutList Shortcuts => ShortcutList.Empty;
         public void Gamepad(GamepadControl control, bool down) { }
         public void Report(Exception error) { }
-    }
-
-    static bool UinputAvailable()
-    {
-        try { UinputDevice.Create("viper-synapse-probe").Dispose(); return true; }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return false; }
     }
 
     static string WaitForNode(UinputDevice device)
@@ -66,7 +60,7 @@ public class LoopbackTests
     [Fact]
     public void A_remapped_key_comes_out_of_the_virtual_device()
     {
-        Assert.SkipUnless(UinputAvailable(), "/dev/uinput is not available");
+        Assert.SkipUnless(Uinput.Usable, Uinput.SkipReason);
 
         using var source = UinputDevice.Create("viper-synapse-test-source");
         using var output = UinputDevice.Create("viper-synapse-test-output");
@@ -93,7 +87,7 @@ public class LoopbackTests
     [Fact]
     public void A_device_held_down_when_the_session_starts_is_taken_only_after_it_is_let_go()
     {
-        Assert.SkipUnless(UinputAvailable(), "/dev/uinput is not available");
+        Assert.SkipUnless(Uinput.Usable, Uinput.SkipReason);
         // KEY_UNKNOWN: until the session takes the stand-in, its events reach the real desktop, and this one has no
         // keysym there.
         const ushort Unknown = 240;
@@ -136,7 +130,7 @@ public class LoopbackTests
     [Fact]
     public void The_virtual_device_is_a_keyboard_and_mouse_and_never_a_game_controller()
     {
-        Assert.SkipUnless(UinputAvailable(), "/dev/uinput is not available");
+        Assert.SkipUnless(Uinput.Usable, Uinput.SkipReason);
         using var output = UinputDevice.Create("viper-synapse-test-output");
         using var node = EvdevDevice.Open(WaitForNode(output));
         var keys = node.Capabilities(EventTypes.Key);
@@ -159,7 +153,7 @@ public class LoopbackTests
     [Fact]
     public void In_four_way_mode_the_keypad_stick_types_its_directions_and_analog_mode_leaves_it_alone()
     {
-        Assert.SkipUnless(UinputAvailable(), "/dev/uinput is not available");
+        Assert.SkipUnless(Uinput.Usable, Uinput.SkipReason);
         using var pad = UinputDevice.CreateTestGamepad("Tartarus stick (test stand-in)", 0x1532, 0x0244, "usb-viper-test-4/input0");
         using var output = UinputDevice.Create("viper-synapse-test-output");
         using var outputNode = EvdevDevice.Open(WaitForNode(output));
@@ -210,7 +204,7 @@ public class LoopbackTests
     [Fact]
     public void Closing_the_session_lets_go_of_a_held_key_and_of_the_grab()
     {
-        Assert.SkipUnless(UinputAvailable(), "/dev/uinput is not available");
+        Assert.SkipUnless(Uinput.Usable, Uinput.SkipReason);
 
         using var source = UinputDevice.Create("viper-synapse-test-source");
         using var output = UinputDevice.Create("viper-synapse-test-output");
@@ -233,7 +227,7 @@ public class LoopbackTests
     [Fact]
     public void The_virtual_gamepad_is_a_360_pad_and_moves_its_stick()
     {
-        Assert.SkipUnless(UinputAvailable(), "/dev/uinput is not available");
+        Assert.SkipUnless(Uinput.Usable, Uinput.SkipReason);
 
         // Made up front rather than on first use, so the test can grab it before anything is sent.
         using var device = UinputDevice.CreateGamepad("viper-synapse-test-pad");

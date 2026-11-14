@@ -21,12 +21,6 @@ public class ServiceTests : IDisposable
             Directory.Delete(_config, recursive: true);
     }
 
-    static bool UinputAvailable()
-    {
-        try { UinputDevice.Create("viper-synapse-probe").Dispose(); return true; }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return false; }
-    }
-
     static string WaitForNode(UinputDevice device)
     {
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
@@ -60,7 +54,7 @@ public class ServiceTests : IDisposable
     [Fact]
     public void A_running_service_ignores_the_tests_stand_in_devices()
     {
-        Assert.SkipUnless(UinputAvailable(), "/dev/uinput is not available");
+        Assert.SkipUnless(Uinput.Usable, Uinput.SkipReason);
         using var standIn = UinputDevice.Create("Razer Tartarus Pro (test stand-in)", 0x1532, StandIn, phys: "usb-viper-test-3/input1");
         using var output = UinputDevice.Create("viper-synapse-test-output");
         WaitForNode(standIn);
@@ -73,7 +67,7 @@ public class ServiceTests : IDisposable
     [Fact]
     public void A_linked_program_brings_its_profile_forward_and_leaving_it_brings_the_chosen_one_back()
     {
-        Assert.SkipUnless(UinputAvailable(), "/dev/uinput is not available");
+        Assert.SkipUnless(Uinput.Usable, Uinput.SkipReason);
         using var standIn = UinputDevice.Create("Razer Tartarus Pro (test stand-in)", 0x1532, StandIn, phys: "usb-viper-test-2/input1");
         using var output = UinputDevice.Create("viper-synapse-test-output");
         WaitForNode(standIn);
@@ -105,7 +99,7 @@ public class ServiceTests : IDisposable
     [Fact]
     public void A_binding_saved_in_settings_takes_over_the_device_and_letting_it_go_releases_the_device()
     {
-        Assert.SkipUnless(UinputAvailable(), "/dev/uinput is not available");
+        Assert.SkipUnless(Uinput.Usable, Uinput.SkipReason);
 
         using var standIn = UinputDevice.Create("Razer Tartarus Pro (test stand-in)", 0x1532, StandIn, phys: "usb-viper-test-1/input1");
         using var output = UinputDevice.Create("viper-synapse-test-output");
